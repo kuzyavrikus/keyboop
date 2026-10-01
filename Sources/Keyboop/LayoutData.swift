@@ -17,7 +17,7 @@ final class LayoutData {
         trigramsEn = Self.loadDict("trigrams_en")
         trigramsUk = Self.loadDict("trigrams_uk")
         trigramsRu = Self.loadDict("trigrams_ru")
-        wordsUk = Self.loadSet("words_uk")
+        wordsUk = Self.loadSet("words_uk").union(ExtraWords.ukCommonForms)
         wordsRu = Self.loadSet("words_ru").union(ExtraWords.ru).union(wordsUk).union(ExtraWords.ruDev).union(ExtraWords.ruAbbr).union(ExtraWords.ruShort).union(ExtraWords.ruCommonForms).union(ExtraWords.ruLoanNames)
         wordsEn = Self.loadSet("words_en").union(ExtraWords.en)
         isLoaded = !trigramsRu.isEmpty && !trigramsUk.isEmpty && !wordsRu.isEmpty && !wordsUk.isEmpty && !wordsEn.isEmpty
