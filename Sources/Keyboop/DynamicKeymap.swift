@@ -10,8 +10,15 @@ import Foundation
 /// и покрывает все символы (буквы, цифровой Shift-ряд, кавычки, скобки) для любого
 /// варианта и любой языковой пары. Используется как primary; `Keymap` — fallback.
 enum DynamicKeymap {
+    struct PhysicalKey {
+        let keyCode: UInt16
+        let shift: Bool
+    }
+
     private(set) static var enToRu: [Character: Character] = [:]
     private(set) static var ruToEn: [Character: Character] = [:]
+    private(set) static var latinPhysicalKeys: [Character: PhysicalKey] = [:]
+    private(set) static var cyrillicPhysicalKeys: [Character: PhysicalKey] = [:]
     /// Физическая клавиша каждой строчной латинской буквы в ЛАТИНСКОЙ раскладке человека (той же,
     /// что в паре выше): у AZERTY «a» стоит не там, где у U.S. Нужна скрытым дублям пунктов меню
     /// (задача 255, `MenuBarController.addLayoutTwins`). Пусто, пока таблица не построена.
@@ -76,17 +83,29 @@ enum DynamicKeymap {
 
         var e2r: [Character: Character] = [:]
         var r2e: [Character: Character] = [:]
+        var latPhysical: [Character: PhysicalKey] = [:]
+        var cyrPhysical: [Character: PhysicalKey] = [:]
         // Печатные клавиши ANSI: буквы, цифровой ряд, знаки — keyCodes 0…50.
         for kc in UInt16(0)...UInt16(50) {
             for shift in [false, true] {
                 let ls = translate(L, kc, shift)
                 let cs = translate(C, kc, shift)
+
+                if ls.count == 1, let l = ls.first, latPhysical[l] == nil {
+                    latPhysical[l] = PhysicalKey(keyCode: kc, shift: shift)
+                }
+                if cs.count == 1, let c = cs.first, cyrPhysical[c] == nil {
+                    cyrPhysical[c] = PhysicalKey(keyCode: kc, shift: shift)
+                }
+
                 guard ls.count == 1, cs.count == 1,
                       let l = ls.first, let c = cs.first, l != c else { continue }
                 if e2r[l] == nil { e2r[l] = c }
                 if r2e[c] == nil { r2e[c] = l }
             }
         }
+        latinPhysicalKeys = latPhysical
+        cyrillicPhysicalKeys = cyrPhysical
         guard !e2r.isEmpty else { return }
         addTypographicAliases(&e2r)
         enToRu = e2r
@@ -126,6 +145,13 @@ enum DynamicKeymap {
         out.reserveCapacity(text.count)
         for ch in text { out.append(map[ch] ?? ch) }
         return out
+    }
+
+    /// Фізична клавіша символу в реальній Latin/Cyrillic розкладці користувача.
+    /// Використовується для remote-safe вводу, де Unicode CGEvent губить payload.
+    static func physicalKey(for character: Character) -> PhysicalKey? {
+        if let key = latinPhysicalKeys[character] { return key }
+        return cyrillicPhysicalKeys[character]
     }
 
     // MARK: - UCKeyTranslate
